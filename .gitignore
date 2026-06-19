@@ -1,0 +1,10 @@
+*.mp4
+*.mkv
+
+__pycache__/
+venv/
+.venv/
+
+ref/
+papers/
+note.txt
