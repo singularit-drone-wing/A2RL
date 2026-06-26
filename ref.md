@@ -13,4 +13,5 @@ datasets
 [TLL drone racing dataset - annotated](https://github.com/tii-racing/drone-racing-dataset)  
 [Black Bird Dataset](https://github.com/mit-aera/Blackbird-Dataset)  
   
-[Betaflight Controller](https://betaflight.com/)
+[Betaflight Controller](https://betaflight.com/)  
+[Flightmare simulator](https://uzh-rpg.github.io/flightmare/)
