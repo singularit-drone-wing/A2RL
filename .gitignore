@@ -1,6 +1,20 @@
+<<<<<<< HEAD
 train/
 valid/
 *.pt
 *.weights
 __pycache__/
 train.txt
+=======
+*.mp4
+*.mkv
+
+__pycache__/
+venv/
+.venv/
+
+ref/
+papers/
+note.txt
+temp/
+>>>>>>> 559958f830a120bc3fc67ef8f92cd2870adaf727
