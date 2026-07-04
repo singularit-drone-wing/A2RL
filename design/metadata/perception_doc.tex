@@ -8,6 +8,17 @@
 \usepackage{tcolorbox}
 \usepackage{amsmath}
 
+
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=blue,      
+    urlcolor=blue,
+    citecolor=blue,
+}
+
 \geometry{a4paper, margin=1in}
 \title{Perception \& State Estimation for Autonomous Drone}
 \author{Singularit Drone Team, CUSAT}
@@ -57,7 +68,7 @@ The perception subsystem is designed to output the following state vectors depen
     \end{itemize}
 \end{enumerate}
 
-\section{System Modeling and Reference Frames}
+\section{System Modeling}
 
 To capture the complex nonlinear dynamics of a quadrotor at the edge of its performance envelope, the vehicle is modeled as a 6 degree-of-freedom (DOF) rigid body of mass $m$ with a diagonal inertia matrix $\mathbf{J} = \text{diag}(J_x, J_y, J_z)$. 
 
@@ -137,7 +148,37 @@ Where:
     \item $\tau_{mot}$ is the time constant of the motor/ESC loop, and $\boldsymbol{\Omega}_{ss}$ represents the steady-state propeller speeds mapped from the control input commands.
 \end{itemize}
 
-\section{Hardware layer}
+\subsection{Testing and Simulation}
+The following open-source datasets, simulation environments, and tools are utilized to benchmark, test, and calibrate the perception and state estimation pipelines.
+
+\textbf{Datasets:}
+\begin{itemize}
+    \item \href{https://fpv.ifi.uzh.ch/}{\textbf{UZH-FPV Drone Racing Dataset:}} Contains real-world high-resolution images, event camera data, IMU measurements, and millimeter-accurate motion capture ground truth designed for evaluating visual-inertial odometry (VIO) during agile maneuvers.
+    \item \href{https://github.com/mit-aera/Blackbird-Dataset}{\textbf{Blackbird Dataset:}} Provides over 10 hours of real and simulated aggressive flight data specifically for testing VIO and SLAM algorithms.
+    \item \href{https://github.com/tii-racing/drone-racing-dataset}{\textbf{TII Drone Racing Dataset:}} Contains high-quality perception data from both autonomous and human-piloted flights.
+    \item \href{https://rpg.ifi.uzh.ch/NeuroBEM.html}{\textbf{NeuroBEM Dataset:}} Flight data representing learned aerodynamic forces from highly aggressive maneuvers.
+    \item \href{https://universe.roboflow.com/airsim-gate/airsim-drone-gate}{\textbf{AirSim Drone Gate Dataset:}} A synthetic computer vision dataset containing images of racing gates generated via the AirSim simulator.
+\end{itemize}
+
+\textbf{Simulators:}
+\begin{itemize}
+    \item \href{https://uzh-rpg.github.io/flightmare/}{\textbf{Flightmare:}} A flexible simulator with photorealistic rendering that supports hardware-in-the-loop simulation for testing vision pipelines.
+    \item \href{https://microsoft.github.io/AirSim/}{\textbf{AirSim:}} A photorealistic Unreal Engine simulator capable of testing the entire perception and estimation pipeline with high transferability to the real world.
+    \item \href{https://github.com/mit-aera/FlightGoggles}{\textbf{FlightGoggles:}} A photorealistic rendering engine built in Unity3D paired with C++ dynamic simulation.
+    \item \href{https://github.com/ntnu-arl/aerial_gym_simulator}{\textbf{Aerial Gym:}} A GPU-accelerated simulator for generating vast amounts of perception data, including RGB, depth, segmentation, and optical flow.
+    \item \href{https://github.com/ethz-asl/rotors_simulator}{\textbf{RotorS:}} A Gazebo-based simulator for multi-rotor basic dynamic simulation and contact forces.
+\end{itemize}
+
+\textbf{VIO tools:}
+\begin{itemize}
+    \item \href{https://github.com/ZJU-FAST-Lab/VID-Fusion}{\textbf{VID-Fusion:}} A robust visual-inertial-dynamics odometry system that integrates error terms related to the drone's transitional dynamics into the VIO backend for accurate external force estimation [1-3].
+    \item \href{https://docs.openvins.com/}{\textbf{OpenVINS:}} An open-source research platform for visual-inertial estimation based on the Multi-State Constraint Kalman Filter (MSCKF). Filter-based methods like this are commonly used in drone racing due to their favorable trade-off between accuracy and computational requirements.
+    \item \href{https://github.com/HKUST-Aerial-Robotics/VINS-Mono}{\textbf{VINS-Mono:}} A robust and versatile monocular visual-inertial state estimator. Instead of a filter, it relies on fixed-lag smoothing, solving a non-linear optimization problem over a sliding window of recent robot states.
+    \item \href{https://github.com/ethz-asl/rovio}{\textbf{ROVIO:}} A visual-inertial odometry system that uses a direct EKF-based approach. It tracks the motion of image patches directly on raw pixel intensities, making it particularly robust in featureless scenarios.
+    \item \href{https://github.com/ethz-asl/kalibr}{\textbf{Kalibr:}} A widespread open-source callibration tool used to estimate the static camera intrinsic parameters, as well as the extrinsic spatial and temporal offsets between the camera and the IMU prior to flight.
+\end{itemize}
+
+\section{Hardware}
 
 \subsection{Physical Frame \& Propulsion}
 \begin{enumerate}
@@ -265,7 +306,7 @@ $$
 \end{itemize}
 
 \vspace{10pt}
-\noindent\textit{Layer 1: Adaptive Cropping \& Preprocessing}
+\subsection{Adaptive Cropping \& Preprocessing}
 \begin{itemize}
     \item \textbf{Objective:} Restrict network processing window to a localized Region of Interest (ROI).
     \item \textbf{Global to Camera Transformation:} Map target gate location into 3D camera tracking frame ($\mathcal{F}_c$):
@@ -276,7 +317,7 @@ $$
     $$\mathbf{I}_{crop} = \text{Crop}(\mathbf{I}_{raw}, u, v, H_{crop}, W_{crop})$$
 \end{itemize}
 
-\noindent\textit{Layer 2: Gate Detection Service (YOLO Pose)}
+\subsection{Gate Detection Service (YOLO Pose)}
 \begin{itemize}
     \item \textbf{Objective:} Predict 2D inner gate corner pixel locations using an embedded neural network.
     \item \textbf{Inference:} Extract local sub-tensor keypoint coordinate matrix via network model mapping $\mathcal{F}_{\theta}$:
@@ -285,14 +326,14 @@ $$
     $$\mathbf{c} = \mathbf{c}_{crop} + \begin{bmatrix} u_{offset} & v_{offset} \end{bmatrix}$$
 \end{itemize}
 
-\noindent\textit{Layer 3: Localisation Service (Perspective-n-Point)}
+\subsection{Localisation Service (Perspective-n-Point)}
 \begin{itemize}
     \item \textbf{Objective:} Reconstruct local 6-DoF spatial transforms from raw image feature targets.
     \item \textbf{Perspective-n-Point:} Resolve camera-to-gate relative parameters ($\mathbf{R}_{rel}, \mathbf{t}_{rel}$) by minimizing geometric reprojection error over corners:
     $$\arg\min_{\mathbf{R}_{rel}, \mathbf{t}_{rel}} \sum_{j=1}^{4} \left\| \mathbf{c}_j - \text{Project}(K, \mathbf{D}, \mathbf{R}_{rel}, \mathbf{t}_{rel}, \mathbf{P}_{gate, j}^{local}) \right\|^2$$
 \end{itemize}
 
-\noindent\textit{Layer 4: Extrinsic Calibration \& Outlier Rejection}
+\subsection{Extrinsic Calibration \& Outlier Rejection}
 \begin{itemize}
     \item \textbf{Objective:} Transform relative camera poses into absolute world coordinates via matrix multiplications utilizing pre-calibrated parameter models, filtering tracking anomalies.
     \item \textbf{Note on Offline Optimization:} Due to onboard computational budget constraints, the structural extrinsic transforms are parameterized through highly accurate, resource-intensive offline batch visual-inertial optimization sequences mapping camera to body coordinates across physical limits:
@@ -372,11 +413,11 @@ $$
 
 \noindent\textit{Output Metrics:}
 \begin{itemize}
-    \item $\hat{\mathbf{x}}_{pred} \in \mathbb{R}^{10}$: Propagated state containing expected kinematics position $\hat{\mathbf{p}}$, velocity $\hat{\mathbf{v}}$, and orientation $\hat{\mathbf{q}}$ matrices.
+    \item $\hat{\mathbf{x}}_{pred} \in \mathbb{R}^{10}$: Propagated state containing expected kinematics position $\hat{\mathbf{p}}$, velocity $\hat{\mathbf{v flare}}$, and orientation $\hat{\mathbf{q}}$ matrices.
 \end{itemize}
 
 \vspace{10pt}
-\noindent\textit{Layer 1: Dynamic Model \& IMU Saturation Monitor}
+\subsection{Dynamic Model \& IMU Saturation Monitor}
 \begin{itemize}
     \item \textbf{Objective:} Safeguard state estimation tracking divergence by monitoring and replacing corrupted raw sensor inputs.
     \item \textbf{Model-Based Prediction:} Solve forward rigid-body acceleration values derived from ESC speed signals:
@@ -388,7 +429,7 @@ $$
     $$\mathbf{a}_{\text{safe}} = \begin{cases} \mathbf{a}_{\text{model}} & \text{if } \left\| \mathbf{a}_{\text{filt}}^{model} - \mathbf{a}_{\text{filt}}^{IMU} \right\|_2 > \sigma \\ \mathbf{a}_{\text{IMU}} & \text{otherwise} \end{cases}$$
 \end{itemize}
 
-\noindent\textit{Layer 2: IMU Polling \& Prediction Service (EKF Predict)}
+\subsection{IMU Polling \& Prediction Service (EKF Predict)}
 \begin{itemize}
     \item \textbf{Objective:} Propagate 10-DoF kinematic states across discrete high-rate micro-timesteps between slow camera steps.
     \item \textbf{Bias Compensation:} Correct incoming streams via running calibration vectors to compute zero-mean inputs:
@@ -461,7 +502,7 @@ $$
 \end{itemize}
 
 \vspace{10pt}
-\noindent\textit{Sensor Fusion Service / EKF Update}
+\subsection{EKF Update}
 \begin{itemize}
     \item \textbf{Objective:} Fuse visual tracking pose vectors with historical odometry logs to correct drift and update internal sensor calibrations.
     \item \textbf{Delay Compensation:} Query the ring buffer to lock the specific historical kinematics matched to target visual data clocks:
@@ -475,6 +516,5 @@ $$
     $$\mathbf{P} = (\mathbf{I} - \mathbf{K} \mathbf{H}) \mathbf{P}$$
     \item \textbf{Data Dispatch:} Publish updated global state arrays into the master concurrent shared memory environment.
 \end{itemize}
-
 
 \end{document}
